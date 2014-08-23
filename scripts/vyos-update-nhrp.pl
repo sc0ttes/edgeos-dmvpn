@@ -244,16 +244,16 @@ sub ipsec_config {
 				my %proposals = @proposals;
 				my $x = scalar(keys %proposals);
 				my $y = 0;
-				push(@conf_file, " --esp");
+				push(@conf_file, " --esp", " ");
 				foreach my $proposal (@proposals) {
 					if ($y != 0 && $y <= $x ) {
 						push(@conf_file, ",");
 					}
 					if ($config_prot->exists("proposal $proposal encryption")) {
-						push(@conf_file, " ", $config_prot->returnValue("proposal $proposal encryption"));
+						push(@conf_file, $config_prot->returnValue("proposal $proposal encryption"));
 					}
 					else {
-						push(@conf_file, " aes128");
+						push(@conf_file, "aes128");
 					}
 					if ($config_prot->exists("proposal $proposal hash")) {
 						push(@conf_file, "-", $config_prot->returnValue("proposal $proposal hash"));
