@@ -1,0 +1,10 @@
+#type: txt
+help:  Enable  sending  of Cisco style NHRP Traffic Indication packets
+#default: "false"
+
+#syntax:expression: $VAR(@) in "true", "false"; \
+#                   "Must be 'true' or 'false'"
+
+#comp_help: "possible completions:
+#  true            true Redirect
+#  false             false Redirect (default)

@@ -1,0 +1,9 @@
+#type: txt
+help: Enable  creation  of  shortcut routes. A received NHRP Traffic Indication will trigger the resolution and establishment of a shortcut route
+#default: "true"
+
+#syntax:expression: $VAR(@) in "true", "false"; \
+#                   "Must be 'true' or 'false'"
+#comp_help: "possible completions:
+#  true            true Shortcut-destination
+#  false             false Shortcut-destination (default)

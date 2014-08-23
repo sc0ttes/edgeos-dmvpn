@@ -1,0 +1,16 @@
+Source: vyos-nhrp
+Section: contrib/net
+Priority: extra
+Maintainer: SO3 Group <maintainers@so3group.net>
+Standards-Version: 3.9.1
+Build-Depends: debhelper (>= 5), autotools-dev, autoconf
+
+Package: vyos-nhrp
+Architecture: all
+Depends: vyatta-cfg-system,
+ vyatta-cfg,
+ vyatta-op,
+ ${misc:Depends}
+Replaces: vyos-nhrp
+Description: Vyatta package vyos-nhrp
+ Vyatta package vyos-nhrp

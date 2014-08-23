@@ -1,0 +1,13 @@
+tag:
+type: txt
+help: Set HUB address (nbma-address - external hub address or fqdn)
+
+#syntax:expression: exec "/opt/vyatta/sbin/vyatta-interfaces.pl --valid-addr $VAR(@) --dev $VAR(../@)"; "Invalid IP address/prefix [$VAR(@)] for interface $VAR(../@)"
+
+#create:expression: "sudo /opt/vyatta/sbin/vyatta-interfaces.pl --eth-addr-update $VAR(@) --dev $VAR(../@)"; "Error setting address $VAR(@) on interface $VAR(../@)"
+
+#delete:expression: "sudo /opt/vyatta/sbin/vyatta-interfaces.pl --eth-addr-delete $VAR(@) --dev $VAR(../@)"; "Error deleting address $VAR(@) on interface $VAR(../@)"
+
+comp_help:Possible completions:
+  <x.x.x.x>     Set the external HUB address
+  <fqdn>	Set the external HUB fqdn
