@@ -1,2 +1,2 @@
 type: u32
-help: Holding time
+help: Holding time in seconds
