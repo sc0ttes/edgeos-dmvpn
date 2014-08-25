@@ -193,6 +193,16 @@ sub tunnel_config {
 		}
 		push(@conf_file, "\n");
 	}
+	if ( $tunnel_Config->exists("$tunnel_ID dynamic-map")) {
+		$type = "#spoke";
+		my @dynmaps = $tunnel_Config->listNodes("$tunnel_ID dynamic-map");
+		my $dynmap = $dynmaps[0];
+		push(@conf_file, " dynamic-map", " $dynmap");
+		push(@conf_file, " ", $tunnel_Config->returnValue("$tunnel_ID dynamic-map $dynmap nbma-domain-name"));
+		shift(@conf_file);
+		unshift(@conf_file, "interface $tunnel_ID $type\n");
+		push(@conf_file, "\n");
+	}
 	if ($tunnel_Config->returnValue("$tunnel_ID cisco-authentication") ne "") {
 		push(@conf_file, " cisco-authentication ", $tunnel_Config->returnValue("$tunnel_ID cisco-authentication") , "\n"); 
 	}
