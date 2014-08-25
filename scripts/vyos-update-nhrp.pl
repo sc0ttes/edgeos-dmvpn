@@ -227,7 +227,10 @@ sub tunnel_config {
 	}	
 	if ($tunnel_Config->exists("$tunnel_ID redirect")) {
 		push(@conf_file, " redirect\n");
-	}		
+	}
+	if ($tunnel_Config->exists("$tunnel_ID shortcut-destination")) {
+		push(@conf_file, " shortcut-destination\n");
+	}
 	push(@conf_file, "\n");
 
 	return @conf_file;
