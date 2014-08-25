@@ -203,6 +203,15 @@ sub tunnel_config {
 		unshift(@conf_file, "interface $tunnel_ID $type\n");
 		push(@conf_file, "\n");
 	}
+	if ( $tunnel_Config->exists("$tunnel_ID shortcut-target")) {
+		my @starget = $tunnel_Config->listNodes("$tunnel_ID shortcut-target");
+		my $starget = $starget[0];
+		push(@conf_file, " shortcut-target", " $starget");
+		push(@conf_file, " ", $tunnel_Config->returnValue("$tunnel_ID shortcut-target $starget holding-time"));
+		shift(@conf_file);
+		unshift(@conf_file, "interface $tunnel_ID $type\n");
+		push(@conf_file, "\n");
+	}
 	if ($tunnel_Config->returnValue("$tunnel_ID cisco-authentication") ne "") {
 		push(@conf_file, " cisco-authentication ", $tunnel_Config->returnValue("$tunnel_ID cisco-authentication") , "\n"); 
 	}
