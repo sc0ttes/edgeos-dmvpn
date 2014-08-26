@@ -215,7 +215,7 @@ sub tunnel_config {
 	if ($tunnel_Config->returnValue("$tunnel_ID cisco-authentication") ne "") {
 		push(@conf_file, " cisco-authentication ", $tunnel_Config->returnValue("$tunnel_ID cisco-authentication") , "\n"); 
 	}
-	if ( $tunnel_Config->exists("$tunnel_ID shortcut-target") && ($tunnel_Config->returnValue("$tunnel_ID holding-time") ne "")) {
+	if ( $tunnel_Config->exists("$tunnel_ID holding-time") && ($tunnel_Config->returnValue("$tunnel_ID holding-time") ne "")) {
 		push(@conf_file, " holding-time", " ", $tunnel_Config->returnValue("$tunnel_ID holding-time") , "\n");
 	}
 	if ($tunnel_Config->exists("$tunnel_ID shortcut")) {
