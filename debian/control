@@ -10,7 +10,8 @@ Architecture: all
 Depends: vyatta-cfg-system,
  vyatta-cfg,
  vyatta-op,
+ vyos-opennhrp,
  ${misc:Depends}
 Replaces: vyos-nhrp
-Description: Vyatta package vyos-nhrp
- Vyatta package vyos-nhrp
+Description: VyOs package vyos-nhrp
+ VyOS package vyos-nhrp
