@@ -86,7 +86,7 @@ sub configure_nhrp_tunnels {
 	my @nhrp_tunnels = $config_nhrp_tun->listNodes();
 	my $notun = 0;
 
-	open (my $fh,">$conffile");
+	open (my $fh,">$conffile") or die("Can't open $conffile: $!\n");
 	print $fh "";
 	close $fh;
 
@@ -135,7 +135,7 @@ sub configure_nhrp_ipsec {
 	my @ipsec_profiles = $config_ipsec->listNodes();
 	my $isipsec = 0;
 	
-	open(my $fh,">$ipsecfile");
+	open(my $fh,">$ipsecfile") or die("Can't open $ipsecfile: $!\n");
 	print $fh "";
 	close $fh;
 
