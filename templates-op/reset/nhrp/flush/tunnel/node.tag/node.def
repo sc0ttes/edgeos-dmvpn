@@ -1,0 +1,4 @@
+help: Clear all non-permanent entries which match the selector specifiers.
+allowed: ${vyatta_sbindir}/vyatta-interfaces.pl --show tunnel
+run: 
+	sudo opennhrpctl flush dev $6 || echo OpenNHRP is not running.
