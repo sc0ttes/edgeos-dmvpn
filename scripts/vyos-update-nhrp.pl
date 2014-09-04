@@ -191,29 +191,31 @@ sub tunnel_config {
 	if ( $tunnel_Config->exists("$tunnel_ID map")) {
 		$type = "#spoke";
 		my @maps = $tunnel_Config->listNodes("$tunnel_ID map");
-		my $map = $maps[0];
-		push(@conf_file, " map", " $map");
-		push(@conf_file, " ", $tunnel_Config->returnValue("$tunnel_ID map $map nbma-address"));
 		shift(@conf_file);
 		unshift(@conf_file, "interface $tunnel_ID $type\n");
+		foreach my $map (@maps) {
+			push(@conf_file, " map", " $map");
+			push(@conf_file, " ", $tunnel_Config->returnValue("$tunnel_ID map $map nbma-address"));
 
-		if ($tunnel_Config->exists("$tunnel_ID map $map register")) {
-			push(@conf_file, " register");
+			if ($tunnel_Config->exists("$tunnel_ID map $map register")) {
+				push(@conf_file, " register");
+			}
+			if ($tunnel_Config->exists("$tunnel_ID map $map cisco")) {
+				push(@conf_file, " cisco");
+			}
+			push(@conf_file, "\n");
 		}
-		if ($tunnel_Config->exists("$tunnel_ID map $map cisco")) {
-			push(@conf_file, " cisco");
-		}
-		push(@conf_file, "\n");
 	}
 	if ( $tunnel_Config->exists("$tunnel_ID dynamic-map")) {
 		$type = "#spoke";
 		my @dynmaps = $tunnel_Config->listNodes("$tunnel_ID dynamic-map");
-		my $dynmap = $dynmaps[0];
-		push(@conf_file, " dynamic-map", " $dynmap");
-		push(@conf_file, " ", $tunnel_Config->returnValue("$tunnel_ID dynamic-map $dynmap nbma-domain-name"));
 		shift(@conf_file);
 		unshift(@conf_file, "interface $tunnel_ID $type\n");
-		push(@conf_file, "\n");
+		foreach my $dynmap (@dynmaps) {
+			push(@conf_file, " dynamic-map", " $dynmap");
+			push(@conf_file, " ", $tunnel_Config->returnValue("$tunnel_ID dynamic-map $dynmap nbma-domain-name"));
+			push(@conf_file, "\n");
+		}
 	}
 	if ( $tunnel_Config->exists("$tunnel_ID shortcut-target")) {
 		my @starget = $tunnel_Config->listNodes("$tunnel_ID shortcut-target");
