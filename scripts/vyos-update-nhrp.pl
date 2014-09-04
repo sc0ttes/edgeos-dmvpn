@@ -34,7 +34,7 @@ use Vyatta::Interface;
 
 use strict;
 use warnings;
-my ($set_nhrp, $set_ipsec, $get_esp_gr_names, $get_ike_gr_names, $set_iptables, $del_iptables, $tun);
+my ($checkref, $set_nhrp, $set_ipsec, $get_esp_gr_names, $get_ike_gr_names, $set_iptables, $del_iptables, $tun);
 my $conffile = '/etc/opennhrp/opennhrp.conf';
 my $ipsecfile = '/etc/opennhrp/opennhrp.ipsec';
 
@@ -44,6 +44,18 @@ Usage:
 	$0 --set_nhrp --set_ipsec --get_esp_gr_names --get_ike_gr_names
 EOF
 	exit 1;
+}
+
+sub checkref {
+	my $config_nhrp_tun = new Vyatta::Config;
+   
+	$config_nhrp_tun->setLevel("protocols nhrp tunnel");
+	my @nhrp_tunnels = $config_nhrp_tun->listNodes();
+
+	if ($tun ~~ @nhrp_tunnels) {
+		print ("WARNING: Can't delete tunnel $tun, it is in use by NHRP config.\n");
+		exit 1;
+	}
 }
 
 sub get_esp_groups {
@@ -413,8 +425,8 @@ sub ipsec_config {
 				}
 				push(@conf_file, "\n");
 			}
-       	}
-   	}
+		}
+	}
 	push(@conf_file, "\n");
 
 	return @conf_file;
@@ -436,16 +448,10 @@ sub create_nhrp_iptables {
 }
 
 sub delete_nhrp_iptables {
-	my $config_tun = new Vyatta::Config;
-	
-	$config_tun->setLevel("interfaces tunnel");
-	
-	if ( $config_tun->exists("$tun local-ip")) {
-		system ("sudo iptables -D OUTPUT -j VYOS_NHRP_${tun}_OUT_HOOK") == 0 or die "System call failed: $!";
-		system ("sudo iptables -D VYOS_NHRP_${tun}_OUT_HOOK 1") == 0 or die "System call failed: $!";
-		system ("sudo iptables -D VYOS_NHRP_${tun}_OUT_HOOK 1") == 0 or die "System call failed: $!";
-		system ("sudo iptables -X VYOS_NHRP_${tun}_OUT_HOOK") == 0 or die "System call failed: $!";
-	}
+	system ("sudo iptables -D OUTPUT -j VYOS_NHRP_${tun}_OUT_HOOK") == 0 or die "System call failed: $!";
+	system ("sudo iptables -D VYOS_NHRP_${tun}_OUT_HOOK 1") == 0 or die "System call failed: $!";
+	system ("sudo iptables -D VYOS_NHRP_${tun}_OUT_HOOK 1") == 0 or die "System call failed: $!";
+	system ("sudo iptables -X VYOS_NHRP_${tun}_OUT_HOOK") == 0 or die "System call failed: $!";
 }
 
 #
@@ -453,15 +459,17 @@ sub delete_nhrp_iptables {
 #
 
 GetOptions (
+	"checkref"			=> \$checkref,
 	"set_ipsec"			=> \$set_ipsec,
 	"set_nhrp"			=> \$set_nhrp,
 	"get_esp_gr_names"	=> \$get_esp_gr_names,
 	"get_ike_gr_names"	=> \$get_ike_gr_names,
 	"set_iptables"		=> \$set_iptables,
 	"del_iptables"		=> \$del_iptables,
-    "tun=s"     		=> \$tun
+	"tun=s"     		=> \$tun
 ) or usage ();
 
+checkref() if $checkref;
 print get_esp_groups() if $get_esp_gr_names;
 print get_ike_groups() if $get_ike_gr_names;
 configure_nhrp_ipsec() if $set_ipsec;
