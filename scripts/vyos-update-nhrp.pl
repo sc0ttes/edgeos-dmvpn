@@ -105,7 +105,7 @@ sub configure_nhrp_tunnels {
 	if (@nhrp_tunnels) {
 		foreach my $nhrp_tunnel(@nhrp_tunnels) {
 			if ($nhrp_tunnel ~~ @tunnels) {
-				if ($config_tun->returnValue("$nhrp_tunnel encapsulation") eq "gre" && ! defined $config_tun->returnValue("$nhrp_tunnel remote-ip")) {
+				if ($config_tun->returnValue("$nhrp_tunnel encapsulation") eq "gre" && ! $config_tun->exists("$nhrp_tunnel remote-ip")) {
 					my @conf_file = tunnel_config($nhrp_tunnel);
 					open (my $fh,">>$conffile");
 					foreach (@conf_file) {
