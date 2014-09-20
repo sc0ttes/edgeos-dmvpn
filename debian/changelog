@@ -1,4 +1,10 @@
-vyos-nhrp (0.1.0) precise; urgency=low
+vyos-nhrp (0.1.0+vyos1+helium1) unstable; urgency=low
+
+  * VyOS import
+
+ -- Daniil Baturin <daniil@baturin.org>  Sat, 20 Sep 2014 07:30:27 +0200
+
+vyos-nhrp (0.1.0) unstable; urgency=low
 
   * Initial release.
 
