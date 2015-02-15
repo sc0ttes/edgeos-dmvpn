@@ -425,6 +425,20 @@ sub ipsec_config {
 					}
 					++$y;
 				}
+				if ($config_prot->exists("dead-peer-detection action")) {
+					push(@conf_file, " ");
+					push(@conf_file, "--dpdaction");
+					push(@conf_file, " ");
+					push(@conf_file, $config_prot->returnValue("dead-peer-detection action"));
+					push(@conf_file, " ");
+					push(@conf_file, "--dpdtimeout");
+					push(@conf_file, " ");
+					push(@conf_file, $config_prot->returnValue("dead-peer-detection timeout"));
+					push(@conf_file, " ");
+					push(@conf_file, "--dpddelay");
+					push(@conf_file, " ");
+					push(@conf_file, $config_prot->returnValue("dead-peer-detection interval"));
+				}
 				push(@conf_file, "\n");
 			}
 		}
