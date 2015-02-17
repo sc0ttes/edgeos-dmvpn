@@ -279,8 +279,10 @@ sub ipsec_config {
 				$config_prot->setLevel("vpn ipsec esp-group $esp_group");
 
 				my @proposals = $config_prot->listNodes("proposal");
-				my %proposals = @proposals;
-				my $x = scalar(keys %proposals);
+				my $x = 0;
+				foreach my $e (@proposals) {
+					$x ++;
+				}
 				my $y = 0;
 				push(@conf_file, " --esp", " ");
 				foreach my $proposal (@proposals) {
@@ -355,8 +357,10 @@ sub ipsec_config {
 			if ($ike_group) {
 				$config_prot->setLevel("vpn ipsec ike-group $ike_group");
 				my @proposals = $config_prot->listNodes("proposal");
-				my %proposals = @proposals;
-				my $x = scalar(keys %proposals);
+				my $x = 0;
+				foreach my $e (@proposals) {
+					$x ++;
+				}
 				my $y = 0;
 				push(@conf_file, " --ike", " ");
 				foreach my $proposal (@proposals) {
