@@ -1,3 +1,9 @@
+vyos-nhrp (0.1.0+vyos2+lithium3) unstable; urgency=low
+
+  * vyos-nhrp: update dh_gencontrol with new development build flag
+
+ -- Alex Harpin <development@landsofshadow.co.uk>  Thu, 25 Jun 2015 23:01:20 +0100
+ 
 vyos-nhrp (0.1.0+vyos2+lithium2) unstable; urgency=low
 
   * Update maintainer address
