@@ -1,3 +1,13 @@
+vyos-nhrp (0.1.0+vyos2+current1) unstable; urgency=medium
+
+  [ Thomas Jepp ]
+  * Fix build depends.
+  * Remove temporary files that are generated as part of the build process.
+
+  [ Kim Hagen ]
+
+ -- Kim Hagen <kim.sidney@gmail.com>  Sun, 24 Jan 2016 15:33:42 -0500
+
 vyos-nhrp (0.1.0+vyos2+lithium3) unstable; urgency=low
 
   * vyos-nhrp: update dh_gencontrol with new development build flag
