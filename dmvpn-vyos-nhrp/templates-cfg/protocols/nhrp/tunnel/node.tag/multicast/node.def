@@ -1,0 +1,7 @@
+type: txt
+help: Set multicast for nhrp
+
+
+comp_help: possible completions:
+  dynamic            multicast dynamic
+  nhs                multicast nhs ipv4
