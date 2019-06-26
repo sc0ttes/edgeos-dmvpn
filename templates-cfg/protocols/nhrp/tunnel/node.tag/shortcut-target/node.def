@@ -1,0 +1,8 @@
+tag:
+type: ipv4net
+help: Defines an off-NBMA network prefix for which the GRE interface will act as a gateway.
+
+syntax:expression: exec "/opt/vyatta/sbin/valid_address $VAR(@)"
+
+comp_help:Possible completions:
+  <x.x.x.x/x>           Set the IP address and prefix length

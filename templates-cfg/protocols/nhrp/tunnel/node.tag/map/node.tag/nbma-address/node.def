@@ -1,0 +1,6 @@
+type: txt
+help: Set HUB address (nbma-address - external hub address or fqdn) [REQUIRED]
+
+comp_help:Possible completions:
+  <x.x.x.x>     Set the external HUB address
+  <fqdn>	Set the external HUB fqdn

@@ -1,0 +1,9 @@
+tag:
+
+type: txt
+
+help: Tunnel for nhrp [REQUIRED]
+
+allowed: /opt/vyatta/sbin/vyatta-interfaces.pl --show tunnel
+
+val_help: <tun> ; Tunnel for nhrp

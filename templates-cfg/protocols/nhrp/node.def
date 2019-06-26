@@ -1,0 +1,5 @@
+help: NHRP parameters
+
+priority: 740
+
+end: sudo /opt/vyatta/sbin/vyos-update-nhrp.pl --set_nhrp;
