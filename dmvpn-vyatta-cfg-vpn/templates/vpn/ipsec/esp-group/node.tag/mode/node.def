@@ -1,0 +1,6 @@
+help: ESP mode
+type: txt 
+default: "tunnel"
+syntax:expression: $VAR(@) in "tunnel", "transport"; "must be tunnel or transport"
+val_help: tunnel; Tunnel mode (default)
+val_help: transport; Transport mode
