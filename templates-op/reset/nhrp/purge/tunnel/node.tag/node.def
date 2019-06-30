@@ -1,0 +1,4 @@
+help: Purge entries for tunnel interface dev $5 from NHRP cache
+allowed: ${vyatta_sbindir}/vyatta-interfaces.pl --show tunnel
+run:
+	sudo opennhrpctl purge dev $5 || echo OpenNHRP is not running.

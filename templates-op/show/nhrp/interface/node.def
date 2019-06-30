@@ -1,0 +1,3 @@
+help: Show NHRP interface connection information
+run: 
+	sudo opennhrpctl interface show || echo OpenNHRP is not running.
