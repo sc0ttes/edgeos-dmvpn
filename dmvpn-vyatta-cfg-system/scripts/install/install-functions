@@ -1,0 +1,372 @@
+#! /bin/bash
+
+# this provides environment and functions needed by install scripts.
+# must be sourced by the scripts.
+
+if [ -e /etc/default/vyatta ] ; then
+  . /etc/default/vyatta
+fi
+
+: ${vyatta_prefix:=/opt/vyatta}
+: ${vyatta_exec_prefix:=$vyatta_prefix}
+: ${vyatta_bindir:=${vyatta_exec_prefix}/bin}
+: ${vyatta_sysconfdir:=${vyatta_prefix}/etc}
+
+# trap signals so we can kill runaway progress indicators
+trap 'progress_indicator stop; exit 1' 1
+trap 'progress_indicator stop; exit 1' 2
+
+# mount point for the install root.
+# for union install, this is a r/w union mount.
+# for non-union install, this is the root partition mount.
+INST_ROOT=/mnt/inst_root
+
+# mount point for the writable root, i.e., the root partition.
+# this is only used for union install.
+WRITE_ROOT=/mnt/wroot
+
+# mount point for the readonly squashfs mount.
+# this is only used for union install.
+READ_ROOT=/mnt/squashfs
+
+# mount point for the ISO image.
+# this is only used when installing with an ISO image file
+# (instead of from a live CD boot).
+CD_ROOT=/mnt/cdrom
+
+# mount point for the squashfs image in the ISO image.
+# this is only used when installing with an ISO image file
+# (instead of from a live CD boot).
+CD_SQUASH_ROOT=/mnt/cdsquash
+
+# the vyatta config dir
+VYATTA_CFG_DIR=${vyatta_sysconfdir}/config
+VYATTA_NEW_CFG_DIR=/config
+
+# PROGRESS_PID can be exported by top-level script
+progress_indicator () {
+  local spid=$PROGRESS_PID
+  if [ -z "$spid" ]; then
+    spid=$$
+  fi
+  case "$1" in
+    start)
+      $vyatta_bindir/progress-indicator $spid &
+      ;;
+    *)
+      if ! rm /tmp/pi.$spid 2>/dev/null; then
+        sleep 1
+        rm /tmp/pi.$spid 2>/dev/null
+      fi
+      sleep 1
+      echo -n -e "\b"
+      ;;
+  esac
+}
+
+# echo to log. uses INSTALL_LOG if set.
+lecho ()
+{
+  local log=$INSTALL_LOG
+  if [ -z "$log" ]; then
+    log=/tmp/install-$$.log
+  fi
+  echo -e "$*" >>$log
+}
+
+# echo to both.
+becho ()
+{
+  lecho "$*"
+  echo -e "$*"
+}
+
+tolower () {
+    echo "$*" | tr '[:upper:]' '[:lower:]'
+}
+
+# Validates a user response.  Returns the response if valid.
+# Returns the default is the user just hits enter.  
+# Returns nothing if not valid.  Default parameter is $1.
+# Options are in $2.  If options are defined return must be a member
+# of the enum. 
+get_response () {
+  local ldefault=$(tolower "$1")
+  local loptions=$(tolower "$2")
+
+
+  if [ "$VYATTA_PROCESS_CLIENT" == "gui2_rest" ]; then
+      myresponse=$ldefault
+  else
+      # get the response from the user
+      read myresponse
+      myresponse=$(tolower "$myresponse")
+  fi
+
+  # Check to see if the user accepts the default
+  if [ -z "$myresponse" ]; then
+    echo -n $ldefault
+  elif [ -n "$loptions" ]; then
+    # make sure response is a valid option
+    for token in $loptions
+      do
+        if [ "$token" == "$myresponse" ]; then
+          echo -n "$myresponse"
+          return 0
+        fi
+      done
+    return 1
+  else
+    echo -n "$myresponse"
+  fi
+
+  return 0
+}
+
+# turn off any mounted swap partitions
+turnoffswap () {
+  if [ -f "/proc/swaps" ]; then
+    myresponse=$(cat /proc/swaps)
+    if [ -n "$myresponse" ]; then
+      lecho "turning off swaps..."
+      swapoff -a
+    fi
+  fi
+}
+
+# Return the size of the drive in MB
+get_drive_size () {
+  local ldrive=$1
+
+  # Get size of disk in 1k blocks
+  local blocks=$(sfdisk -s /dev/$ldrive)
+
+  # Translate to Megabytes (SI units)
+  local bytes=$(($blocks * 1024))
+  local lsize=$(($bytes / 1000000))
+
+  echo $lsize
+}
+
+# Probe hardrives not shown in /proc/partitions by default
+probe_drives () {
+  # Find drives that may not be in /proc/partitions since not mounted
+  drive=$(ls /sys/block  | grep '[hsv]d.|nvme.|mmcblk.')
+
+  # now exclude all drives that are read-only
+  for drive in $drive; do
+    if [ $(cat /sys/block/$drive/ro) -ne 0 ]; then
+      output=$(mount | grep $drive)
+      if [ -z "$output" ]; then
+        output=$(parted -s /dev/$drive p)
+      fi
+    fi
+  done
+}
+
+# Display text $1 before choice.
+# Sets the variable named by $2.
+# Note that select_drive should be wrapped 
+# in the verification loop, not the included get_response.
+select_drive () {
+  local msg=$1
+  local outvar=$2
+  local drv=''
+  # list the drives in /proc/partitions.  Remove partitions and empty lines.
+  # the first grep pattern looks for devices named c0d0, hda, and sda.
+  drives=$(cat /proc/partitions | \
+           awk '{ if ($4!="name") { print $4 } }' | \
+           egrep "c[0-9]d[0-9]$|[hsv]d[a-z]$|nvme[0-9]n[0-9]|mmcblk[0-9]" | \
+           egrep -v "^$")
+
+  #this needs more testing to decide if better than above
+  #drives=$(lsblk -dn -o name -I8)
+
+  # take the first drive as the default
+  drv=$(echo $drives | /usr/bin/awk '{ print $1 }')
+
+  # Add the drive sizes to the display to help the user decide
+  display=''
+  for drive in $drives; do
+    size=$(get_drive_size $drive)
+    display="$display $drive\t$size"MB"\n"
+  done
+
+  while true; do
+    # Display the drives and ask the user which one to install to
+    echo -e "$display"
+    echo
+    echo -n "$1 [$drv]:"
+    response=$(get_response "$drv" "$drives") && break
+  done
+  eval "$outvar=$response"
+
+  echo
+}
+
+
+# Add a console entry to the config file.
+# $1: Console device name (e.g. ttyS0)
+# $2: Path to config file
+#
+add_console_entry () {
+  console_dev=$1
+  config_file=$2
+  sed -i -e "/console {/a \ \
+        device $console_dev {\n\
+            speed 115200\n\
+        }" $config_file
+}
+
+# $1: user name
+# $2: encrypted password
+# $3: config file
+set_encrypted_password () {
+  sed -i -e \
+    "/ user $1 {/,/}/s/encrypted-password.*\$/encrypted-password \"$2\"/" $3
+}
+
+# interactively prompt user to change password for the specified account in
+# the specified config file
+# $1: account name
+# $2: config file
+change_password() {
+  local user=$1
+  local config=$2
+  local pwd1="1"
+  local pwd2="2"
+
+  until [[ "$pwd1" == "$pwd2" ]]; do
+    read -p "Enter password for user '$user':" -r -s pwd1 <>/dev/tty 2>&0
+    echo
+    if [[ "$pwd1" == "" ]]; then
+      echo "'' is not a valid password"
+      continue
+    fi 
+    read -p "Retype password for user '$user':" -r -s pwd2 <>/dev/tty 2>&0
+    echo
+
+    if [ "$pwd1" != "$pwd2" ]; then
+      echo "Passwords do not match"
+    fi
+  done
+
+  # escape any slashes in resulting password
+  local epwd=$(mkpasswd --method=sha-512 "$pwd1" | sed 's:/:\\/:g')
+  set_encrypted_password "$user" "$epwd" "$config"
+}
+
+# returns true if it's a disk-based boot
+is_disk_based_boot()
+{
+    islive=`grep boot=live /proc/cmdline`
+    if [ -z "$islive" ]; then
+	# Return value 0 is "true" is shell
+	return 0
+    else
+	return 1
+    fi
+}
+
+# returns true if it's a live cd boot
+is_live_cd_boot ()
+{
+  # Poor check, but whatever. The point is that on installed system
+  # the image file normally is named after the current version,
+  # while on livecd it's just "filesystem.squashfs"
+  if grep -q -e '^overlay.*/filesystem.squashfs' /proc/mounts; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# returns true if it's a union-install boot
+is_union_install ()
+{
+  if is_live_cd_boot; then
+    return 1
+  fi
+  if grep -q 'upperdir=/live/persistence/' /proc/mounts \
+      && egrep -q 'overlay / overlay ' /proc/mounts; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# outputs the version string of the current running version.
+get_cur_version ()
+{
+  ver=`cat /opt/vyatta/etc/version | awk '{print $2}'`
+  if [ -z "$ver" ]; then
+      echo "UNKNOWN"
+  else
+      echo $ver
+  fi
+}
+
+# outputs the version string of the new version, i.e., the version that is
+# being installed. this can be from live CD boot or from a ISO image file.
+get_new_version ()
+{
+  ver_path=/var/lib/dpkg/status
+  ver_file=${CD_SQUASH_ROOT}${ver_path}
+  if [ -f "$ver_file" ]; then
+    # CD_SQUASH_ROOT is set up => we are installing with a specified ISO
+    # image file. use the version string from there.
+    dpkg -l --root=${CD_SQUASH_ROOT} | \
+	grep "^..  vyatta-version " | awk '{print $3}'
+    return
+  fi
+
+  ver_file=${ver_path}
+  if is_live_cd_boot && [ -f "$ver_file" ]; then
+    # we are installing from a live CD boot
+    ver=`cat /opt/vyatta/etc/version | awk '{print $2}'`
+    echo $ver
+    return
+  fi
+
+  # couldn't find it
+}
+
+# Generate mount options based on the type of union mount
+gen_mopts ()
+{
+    local mnttype=$1
+    local upper=$2
+    local lower=$3
+    local work=$4
+    local mntpoint=$5
+
+    case "$1" in
+        overlay)
+            echo "-t $mnttype -o noatime,upperdir=$upper,lowerdir=$lower,workdir=$work $mnttype $mntpoint"
+            ;;
+        *)
+            echo "-t $mnttype -o noatime,dirs=$upper=rw:$lower=ro $mnttype $mntpoint"
+            ;;
+    esac
+}
+
+# try to mount. log any errors and return the appropriate status.
+# $1: arguments for mount
+try_mount ()
+{
+  args="$*"
+  output=$(eval "mount $args 2>&1")
+  status=$?
+  if [ $status == 0 ]; then
+    return 0
+  fi
+  # error
+  cat <<EOF
+Error trying to mount a partition/directory.
+Please see $INSTALL_LOG for details.
+EOF
+  lecho 'Error trying to mount a partition/directory.'
+  lecho "mount $args\n$output"
+  return 1
+}
+

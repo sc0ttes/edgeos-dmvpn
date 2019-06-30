@@ -1,0 +1,18 @@
+# device name to CLI path matching
+lo	loopback
+eth	ethernet
+lan	ethernet
+ifb	input
+peth	pseudo-ethernet
+br	bridge
+bond	bonding
+vtun	openvpn
+tun	tunnel
+vti	vti
+wlm	wirelessmodem
+wlan	wireless
+pppoe   pppoe
+dum     dummy
+l2tpeth l2tpv3
+vxlan   vxlan
+wg      wireguard

@@ -1,0 +1,244 @@
+#!/bin/bash
+# **** License ****
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# This code was originally developed by Vyatta, Inc.
+# Copyright (C) 2007-2010 Vyatta, Inc.
+# All Rights Reserved.
+#
+# Description:	Vyatta Router system setup
+#		Indirect init sub-script of vyatta-router.init
+#
+# **** End License ****
+
+progname=${0##*/}
+ACTION=$1
+
+source /etc/default/vyatta
+
+: ${vyatta_prefix:=/opt/vyatta}
+: ${vyatta_bindir:=${vyatta_prefix}/bin}
+: ${vyatta_sbindir:=${vyatta_prefix}/sbin}
+: ${vyatta_sysconfdir:=${vyatta_prefix}/etc}
+
+[[ $PATH == *${vyatta_bindir}* ]] || PATH+=:${vyatta_bindir}
+[[ $PATH == *${vyatta_sbindir}* ]] || PATH+=:${vyatta_sbindir}
+
+export PATH
+export DEBIAN_FRONTEND=noninteractive
+
+. /lib/lsb/init-functions
+
+## BOOTFILE is provided by ofr.init
+: ${BOOTFILE:=$prefix/etc/config/config.boot}
+
+syslog ()
+{
+    logger -p user.warning -t "$progname" "$*"
+}
+
+# easy way to make empty file without any command
+empty()
+{
+    >$1
+}
+
+shopt -s extglob nullglob
+
+search_config_if_wan () {
+    grep -q "\<serial\>.*\<$1\>" $BOOTFILE
+}
+
+add_new_serial_if () {
+    __config_additions=/tmp/__config_additions
+    rm -f $__config_additions
+
+    ip link show |
+        sed -n '/^[0-9]*: wan[0-9]*:/ s/.* \([^:]*\):.*$/\1/p' |
+        while read wan ; do
+	    if ! search_config_if_wan $wan ; then
+	        echo "    serial $wan" >> $__config_additions
+	    fi
+        done
+
+    if [ -e $__config_additions ]; then
+	rm -f /tmp/__bootfile
+	sed '/^[! ]*interfaces {$/ r '$__config_additions \
+	    $BOOTFILE > /tmp/__bootfile
+	mv /tmp/__bootfile $BOOTFILE
+	rm -f $__config_additions
+    fi
+}
+
+## Update the version information
+update_version_info () {
+    if [ -f ${vyatta_sysconfdir}/version.master ]; then
+	cp -u ${vyatta_sysconfdir}/version.master ${vyatta_sysconfdir}/version
+    fi
+}
+
+clear_or_override_config_files ()
+{
+    for conf in snmp/snmpd.conf snmp/snmptrapd.conf snmp/snmp.conf \
+        keepalived/keepalived.conf \
+        ipvsadm.rules default/ipvsadm resolv.conf
+    do
+	if [ -s /etc/$conf ] ; then
+	    empty /etc/$conf
+	    chmod 0644 /etc/$conf
+	fi
+    done
+}
+
+update_interface_config () {
+    if [ -d /run/udev/vyatta ]; then
+	$vyatta_sbindir/vyatta_interface_rescan /run/udev/vyatta $BOOTFILE
+    fi
+}
+
+create_ssh_host_keys () {
+    if [ ! -f "/etc/ssh/ssh_host_rsa_key" ]; then
+        syslog "Creating ssh v2 rsa host key."
+        ssh-keygen -q -N '' -t rsa -f /etc/ssh/ssh_host_rsa_key
+    fi;
+    if [ ! -f "/etc/ssh/ssh_host_dsa_key" ]; then
+	syslog "Creating ssh v2 dsa host key."
+        ssh-keygen -q -N '' -t dsa -f /etc/ssh/ssh_host_dsa_key
+    fi;
+    if [ ! -f "/etc/ssh/ssh_host_key" ]; then
+	syslog "Creating ssh v1 host key."
+        ssh-keygen -q -N '' -t rsa1 -f /etc/ssh/ssh_host_key
+    fi;
+    if [ ! -f "/etc/ssh/ssh_host_ed25519_key" ]; then
+	syslog "Creating ssh ed25519 host key."
+        ssh-keygen -q -N '' -t ed25519 -f /etc/ssh/ssh_host_ed25519_key
+    fi;
+}
+
+set_ipv6_params ()
+{
+    rm -f /var/run/vyatta/ipv6_no_fwd.*
+
+    # difficult to set new default values for IPV6 earlier
+    if [ ! -d /proc/sys/net/ipv6 ]; then
+	# Skip it if IPv6 is not loaded
+	return
+    fi
+
+    # Enable forwarding
+    echo 1 >/proc/sys/net/ipv6/conf/all/forwarding
+
+    # Increase route table limit
+    echo 32768 >/proc/sys/net/ipv6/route/max_size
+
+    # These values all should be disabled
+    for p in accept_source_route accept_redirects
+    do
+	for d in /proc/sys/net/ipv6/conf/*
+	do
+	    echo 0 > $d/$p
+	done
+    done
+}
+
+setup_ntp_config_file () {
+    template_ntp_conf=/opt/vyatta/etc/ntp.conf
+    if [ -e $template_ntp_conf ]; then
+	cp -f $template_ntp_conf /etc/ntp.conf
+    else
+	log_failure_msg "NTP template config file doesn\'t exist"
+    fi
+}
+
+
+# These are all the default security setting which are later
+# overridden when configuration is read. These are the values the
+# system defaults.
+security_reset () {
+   # restore PAM back to virgin state (no radius other services)
+   rm -f /etc/pam_radius_auth.conf
+   if grep -q radius /etc/pam.d/common-auth
+   then
+	pam-auth-update --package --remove radius
+	rm /usr/share/pam-configs/radius
+   fi
+
+   # Disable root login over telnet
+   sed -i -e '/^# Pseudo-terminal (telnet)/,$d' /etc/securetty
+
+   # Restore default sshd config
+   #  Disable root login with ssh
+   #  Renable DNS validation
+   #  Remove Listen addresses
+   sed -i -e '/^PermitRootLogin/s/yes/no/' \
+          -e '/^UseDNS/s/no/yes/' \
+	  -e '/^ListenAddress/d' /etc/ssh/sshd_config
+}
+
+start () {
+    mkdir -p /var/run/vyatta /var/log/vyatta
+    chgrp vyattacfg /var/run/vyatta /var/log/vyatta
+    chmod 775 /var/run/vyatta /var/log/vyatta
+
+    update_interface_config
+    create_ssh_host_keys || \
+	log_failure_msg "can't initialize ssh host keys"
+    clear_or_override_config_files || \
+	log_failure_msg "can\'t reset config files"
+    setup_ntp_config_file
+
+    add_new_serial_if || \
+	log_failure_msg "can\'t add serial interfaces"
+
+    set_ipv6_params
+    security_reset
+
+    update_version_info
+
+    # Clear out login banner changes
+    for f in /etc/issue /etc/issue.net /etc/motd
+    do
+	if [ -f $f.old ]
+	then mv $f.old $f
+	fi
+    done
+
+    # Remove links from the post-commit hooks directory.
+    # note that this approach only supports hooks that are "configured",
+    # i.e., it does not support hooks that need to always be present.
+    cpostdir=$(cli-shell-api getPostCommitHookDir)
+    
+    # exclude commits hooks from vyatta-cfg
+    excluded="10vyatta-log-commit.pl 99vyos-user-postcommit-hooks"
+    
+    if [ -d "$cpostdir" ]; then
+	for f in $cpostdir/*
+	do
+	    if [[ ! $excluded =~ $(basename $f) ]]; then
+		rm -f $cpostdir/$(basename $f)
+	    fi
+	done
+    fi
+
+    ## Clear out apt config file--it will be filled in by config load
+    empty /etc/apt/sources.list
+
+    # remove any interface stat clears
+    rm -f /var/run/vyatta/*.stats
+}
+
+case "$ACTION" in
+    start) start ;;
+    stop|restart|force-reload) true ;; # nothing to stop/restart
+    *)	log_failure_msg "action unknown: $ACTION" ;
+	false ;;
+esac
+
+exit $?

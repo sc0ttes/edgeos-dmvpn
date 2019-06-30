@@ -1,0 +1,10 @@
+help: System loging banner post-login
+type: txt
+
+update: sudo /opt/vyatta/sbin/vyatta-banner.pl \
+             --action=update --banner-type=post-login
+
+delete: sudo /opt/vyatta/sbin/vyatta-banner.pl \
+             --action=delete --banner-type=post-login
+
+comp_help: Example: "\\n\\n\\tWelcome to VyOS!\\n"

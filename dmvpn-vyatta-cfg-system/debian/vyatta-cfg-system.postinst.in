@@ -1,0 +1,232 @@
+#!/bin/bash
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+sysconfdir=@sysconfdir@
+bindir=@bindir@
+sbindir=@sbindir@
+
+# remove init of daemons that are controlled by Vyatta configuration process
+for init in ntp ssh snmpd openhpid logd \
+            ipvsadm dnsmasq ddclient radvd \
+	    hostapd conntrackd keepalived \
+	    pdns-recursor
+do
+  update-rc.d -f ${init} remove >/dev/null
+  systemctl disable ${init} >/dev/null
+done
+
+# remove extra call to clock setup only need one. this speeds up boot
+# Mystery: why does Debian do it twice?
+if [ -L /etc/rcS.d/S*hwclockfirst.sh -a -L /etc/rcS.d/S*hwclock.sh ]; then
+    rm /etc/rcS.d/S*hwclock.sh
+fi
+
+# Udev package asks for user 'tss' early in boot process.
+#  Want to avoid going out to remote services to look for this local user
+if ! grep -q '^tss' /etc/passwd; then
+    adduser --system --group --shell /usr/sbin/nologin --home /var/lib/tpm tss
+fi
+
+# Remove leftover udev files from earlier release
+if [ -d /etc/udev/rules.d/ ]; then
+    rm -f /etc/udev/rules.d/*vyatta-net.rules
+fi
+
+# Remove rsyslog logrotate since it has hardcoded assumptions about syslog files
+rm -f /etc/logrotate.d/rsyslog
+
+# Force screenblanker to be off, it can be enabled later if desired
+if [ -f /etc/console-tools/config ]; then
+    sed -i -e '/^POWERDOWN/s/=.*$/=0/' \
+	   -e '/^BLANK_TIME/s/=.*$/=0/' \
+	   -e '/^BLANK_DPMS/s/=.*$/=off/' /etc/console-tools/config
+fi
+
+if [ "$sysconfdir" != "/etc" ]; then
+    touch /etc/sudoers
+    cp -p /etc/sudoers /etc/sudoers.bak
+
+    # enable ssh banner
+    sed -i 's/^#Banner/Banner/' /etc/ssh/sshd_config
+    # make sure PermitRoot is off
+    sed -i '/^PermitRootLogin/s/yes/no/' /etc/ssh/sshd_config
+    # make sure PasswordAuthentication is on
+    sed -i 's/^#PasswordAuthentication/PasswordAuthentication/' /etc/ssh/sshd_config
+    sed -i '/^PasswordAuthentication/s/no/yes/' /etc/ssh/sshd_config
+
+    # add HostKeys for protocol version 1
+    if ! grep -q '^HostKey /etc/ssh/ssh_host_key' /etc/ssh/sshd_config; then
+	echo '# HostKey for protocol version 1' >> /etc/ssh/sshd_config
+	echo 'HostKey /etc/ssh/ssh_host_key' >> /etc/ssh/sshd_config
+    fi
+
+    # add UseDNS line
+    sed -i '/^UseDNS/d' /etc/ssh/sshd_config
+    echo 'UseDNS yes' >>/etc/ssh/sshd_config
+
+    # cleanup any old entries in /etc/sudoers from previous versions
+    sed -i /etc/sudoers \
+	-e '/### BEGIN VYATTA/,/### END VYATTA/d' \
+	-e '/Cmnd_Alias IPTABLE/,/PPPOE_CMDS/d' \
+	-e '/sudo-users/d' \
+	-e '/env_keep+=VYATTA/d' || true
+
+    # Turn off Debian default for %sudo
+    sed -i -e '/^%sudo/d' /etc/sudoers || true
+
+    # Add Vyatta entries for sudoers
+    cp $sysconfdir/sudoers /etc/sudoers.d/vyatta
+    chmod 0440 /etc/sudoers.d/vyatta
+
+    # purge off ancient devfs stuff from /etc/securetty
+    cp $sysconfdir/securetty /etc/securetty
+
+    for f in issue issue.net; do
+	if [ ! -e /etc/$f.old ]; then
+            cp $sysconfdir/$f /etc/$f
+        fi
+    done
+
+    cp $sysconfdir/vyatta-sysctl.conf /etc/sysctl.d/30-vyatta-router.conf
+
+     # Set file capabilities
+    sed -r -e '/^#/d' -e '/^[[:blank:]]*$/d' < $sysconfdir/filecaps | \
+    while read capability path; do
+       touch -c $path
+       setcap $capability $path
+    done
+
+    # Install pam_cap config
+    cp $sysconfdir/capability.conf /etc/security/capability.conf
+
+    # Install our own version of rsyslog.conf without
+    # default targets
+    mv /etc/rsyslog.conf /etc/rsyslog.conf.orig
+    cp $sysconfdir/rsyslog.conf /etc/rsyslog.conf
+
+    # Install own version of cpufrequtils config
+    cp $sysconfdir/cpufrequtils /etc/default/cpufrequtils
+fi
+
+# create needed directories
+mkdir -p /var/log/user
+mkdir -p /var/core
+mkdir -p /opt/vyatta/etc/config/auth
+mkdir -p /opt/vyatta/etc/config/scripts
+mkdir -p /opt/vyatta/etc/config/user-data
+mkdir -p /opt/vyatta/etc/config/support
+chown -R root:vyattacfg /opt/vyatta/etc/config
+chmod -R 775 /opt/vyatta/etc/config
+mkdir -p /opt/vyatta/etc/logrotate
+mkdir -p /opt/vyatta/etc/netdevice.d
+
+# create /opt/vyatta/etc/config/scripts/vyos-postconfig-bootup.script
+# this should be after 'mkdir -p /opt/vyatta/etc/config/scripts' above
+if [ ! -x /opt/vyatta/etc/config/scripts/vyos-postconfig-bootup.script ]; then
+    touch /opt/vyatta/etc/config/scripts/vyos-postconfig-bootup.script
+    chmod 755 /opt/vyatta/etc/config/scripts/vyos-postconfig-bootup.script
+    cat <<EOF >>/opt/vyatta/etc/config/scripts/vyos-postconfig-bootup.script
+#!/bin/sh
+# This script is executed at boot time after VyOS configuration is fully applied.
+# Any modifications required to work around unfixed bugs
+# or use services not available through the VyOS CLI system can be placed here.
+
+EOF
+fi
+
+touch /etc/environment
+
+if [ ! -f /etc/bash_completion ]; then
+  echo "source /etc/bash_completion.d/10vyatta-op" > /etc/bash_completion
+  echo "source /etc/bash_completion.d/20vyatta-cfg" >> /etc/bash_completion
+fi
+
+sed -i 's/^set /builtin set /' /etc/bash_completion
+
+dpkg-reconfigure -f noninteractive openssh-server
+rm -f /etc/ssh/*.broken
+update-rc.d -f ssh remove >/dev/null
+
+# Fix up PAM configuration for login so that invalid users are prompted
+# for password
+sed -i 's/requisite[ \t][ \t]*pam_securetty.so/required pam_securetty.so/' $rootfsdir/etc/pam.d/login
+
+# Change default shell for new accounts
+sed -i -e ':^DSHELL:s:/bin/bash:/bin/vbash:' /etc/adduser.conf
+
+# Do not allow users to change full name field (controlled by Vyatta config)
+sed -i -e 's/^CHFN_RESTRICT/#&/' /etc/login.defs
+
+# Only allow root to use passwd command
+if ! grep -q 'pam_succeed_if.so' /etc/pam.d/passwd ; then
+    sed -i -e '/^@include/i \
+password	requisite pam_succeed_if.so user = root
+' /etc/pam.d/passwd
+fi
+
+# Ask mdadm to call our own event handling daemon
+# Don't start mdadm daemon when running on livecd
+if [ -e /etc/default/mdadm ]; then
+    sed -i 's+^DAEMON_OPTIONS=.*$+DAEMON_OPTIONS="--syslog --program /opt/vyatta/sbin/vyatta-raid-event"+' /etc/default/mdadm
+    sed -i 's/^START_DAEMON.*$/START_DAEMON=false/' /etc/default/mdadm
+fi
+
+# Disable reboot on ctrl-alt-delete
+ln -sf /dev/null /lib/systemd/system/ctrl-alt-del.target
+
+# remove unnecessary ddclient script in /etc/ppp/ip-up.d/
+# this logs unnecessary messages trying to start ddclient
+rm -f /etc/ppp/ip-up.d/ddclient
+
+# remove old init that should have been cleaned up during upgrade but isn't
+if [ -f /etc/init.d/vyatta-ofr ]; then
+    update-rc.d -f /etc/init.d/vyatta-ofr remove
+    rm -f /etc/init.d/vyatta-ofr
+fi
+
+# comply with Squeeze version of modprobe
+# remove old versions of files during upgrade
+for modprobe in vyatta_blacklist_ipv6 vyatta_disable_ipv6
+do
+  if [ -f /etc/modprobe.d/${modprobe} ]; then
+      mv -f /etc/modprobe.d/${modprobe} /etc/modprobe.d/${modprobe}.conf
+  fi
+done
+
+# add vyatta-config-reboot-params to start at boot up
+update-rc.d vyatta-config-reboot-params start 20 S
+
+# set vyos-intfwatchd to start at boot
+update-rc.d vyos-intfwatchd start 2345
+
+# set ec2-vyos-init to start on boot
+update-rc.d ec2-vyos-init start 2345
+
+# Add radius operator user for radius users to map to
+if ! grep -q '^radius_user' /etc/passwd; then
+  adduser --quiet --firstuid 1001 --disabled-login --ingroup users --gecos "radius user" --shell /bin/vbash radius_user
+  adduser --quiet radius_user frrvty
+  adduser --quiet radius_user vyattaop
+  adduser --quiet radius_user operator
+  adduser --quiet radius_user adm
+  adduser --quiet radius_user dip
+  adduser --quiet radius_user users
+fi
+
+# Add radius admin user for radius users to map to
+if ! grep -q '^radius_priv_user' /etc/passwd; then
+  adduser --quiet --firstuid 1001 --disabled-login --ingroup vyattacfg --gecos "radius privileged user" --shell /bin/vbash radius_priv_user
+  adduser --quiet radius_priv_user frrvty
+  adduser --quiet radius_priv_user vyattacfg
+  adduser --quiet radius_priv_user sudo
+  adduser --quiet radius_priv_user adm
+  adduser --quiet radius_priv_user dip
+  adduser --quiet radius_priv_user disk
+  adduser --quiet radius_priv_user users
+fi
+
+# Local Variables:
+# mode: shell-script
+# sh-indentation: 4
+# End:
