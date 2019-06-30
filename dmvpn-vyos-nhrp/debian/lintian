@@ -1,0 +1,2 @@
+vyos-nhrp: file-in-unusual-dir
+vyos-nhrp: dir-or-file-in-opt

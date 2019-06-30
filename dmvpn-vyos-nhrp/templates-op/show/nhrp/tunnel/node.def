@@ -1,0 +1,3 @@
+help: Show NHRP tunnel connection information
+run: 
+	sudo opennhrpctl show || echo OpenNHRP is not running.

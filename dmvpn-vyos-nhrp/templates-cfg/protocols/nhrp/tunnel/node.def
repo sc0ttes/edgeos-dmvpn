@@ -1,0 +1,12 @@
+tag:
+type: txt
+help: Tunnel for nhrp [REQUIRED]
+
+allowed: /opt/vyatta/sbin/vyatta-interfaces.pl --show tunnel
+
+val_help: <tun> ; Tunnel for nhrp
+
+create: sudo /opt/vyatta/sbin/vyos-update-nhrp.pl --tun "$VAR(@)" --set_iptables
+
+delete: sudo /opt/vyatta/sbin/vyos-update-nhrp.pl --tun "$VAR(@)" --del_iptables
+

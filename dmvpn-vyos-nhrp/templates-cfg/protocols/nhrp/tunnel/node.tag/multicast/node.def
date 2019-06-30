@@ -1,0 +1,7 @@
+type: txt
+help: Set multicast for nhrp
+syntax:expression: $VAR(@) in "dynamic", "nhs";"Must be (dynamic nhs)\n"
+
+comp_help: possible completions:
+  dynamic            multicast dynamic
+  nhs                multicast nhs ipv4

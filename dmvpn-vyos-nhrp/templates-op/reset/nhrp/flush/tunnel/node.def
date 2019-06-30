@@ -1,0 +1,3 @@
+help: Clear all non-permanent entries
+run: 
+	sudo opennhrpctl flush || echo OpenNHRP is not running.
