@@ -1,0 +1,10 @@
+tag:
+type: txt
+help: Tunnel interface associated with this configuration profile
+allowed: cli-shell-api listActiveNodes interfaces tunnel
+
+commit:expression: $VAR(../../esp-group/) != ""; "Must configure esp-group"
+commit:expression: $VAR(../../ike-group/) != ""; "Must configure ike-group"
+commit:expression: $VAR(../../authentication/) != ""; "Must configure authentication"
+commit:expression: (`cli-shell-api returnValue interfaces tunnel $VAR(@) encapsulation` == "gre" && \
+		   `cli-shell-api returnValue interfaces tunnel $VAR(@) remote-ip` == ""); "Must be mgre tunnel"
