@@ -1,3 +1,0 @@
-multi:
-type: ipv4net
-help: NAT networks to exclude from allowed-networks

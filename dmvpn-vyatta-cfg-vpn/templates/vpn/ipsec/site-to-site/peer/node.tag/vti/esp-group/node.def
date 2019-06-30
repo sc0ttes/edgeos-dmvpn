@@ -1,3 +1,0 @@
-help: ESP group name [REQUIRED]
-type:  txt
-allowed: cli-shell-api listActiveNodes vpn ipsec esp-group

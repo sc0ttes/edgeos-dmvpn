@@ -1,4 +1,0 @@
-help: Defult ESP group name
-type:  txt
-allowed: cli-shell-api listActiveNodes vpn ipsec esp-group
-

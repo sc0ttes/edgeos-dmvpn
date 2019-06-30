@@ -1,5 +1,0 @@
-type: txt
-help: Set HUB fqdn (nbma-address - fqdn) [REQUIRED]
-
-comp_help:Possible completions:
-  <fqdn>	Set the external HUB fqdn

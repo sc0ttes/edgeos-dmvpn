@@ -1,6 +1,0 @@
-help: Hash algorithm
-type: txt
-default: "sha1"
-syntax:expression: $VAR(@) in "md5", "sha1"; "must be md5 or sha1"
-val_help: md5; MD5 hash
-val_help: sha1; SHA1 hash (default)

@@ -1,4 +1,0 @@
-type: txt
-help: Pass phrase for cisco authentication
-default: ""
-
