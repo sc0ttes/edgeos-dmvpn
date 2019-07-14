@@ -1,5 +1,0 @@
-build/*
-*.pyc
-packer_build/*
-packer_cache/*
-key/*
