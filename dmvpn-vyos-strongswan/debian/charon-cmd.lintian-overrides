@@ -1,3 +1,0 @@
-# strongswan libraries are installed in /usr/lib/ipsec because they are private
-# to the strongSwan project. We still want to split multiple binaries from the lib
-charon-cmd: binary-or-shlib-defines-rpath usr/sbin/charon-cmd /usr/lib/ipsec
