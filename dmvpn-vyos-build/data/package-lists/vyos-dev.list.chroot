@@ -1,0 +1,4 @@
+gdb
+strace
+apt-rdepends
+vyos-smoketest
