@@ -1,7 +1,6 @@
 priority: 900
 help: Virtual Private Network (VPN)
-end: sudo ${vyos_conf_scripts_dir}/ipsec-settings.py || exit 1
-    sudo /opt/vyatta/sbin/vyatta-vti-config.pl || exit 1
+end: sudo /opt/vyatta/sbin/vyatta-vti-config.pl || exit 1
     sudo /opt/vyatta/sbin/vpn-config.pl \
               --config_file='/etc/ipsec.conf' \
               --secrets_file='/etc/ipsec.secrets' \

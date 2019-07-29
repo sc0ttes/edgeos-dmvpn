@@ -32,7 +32,7 @@ def add_package(name, url=None, commit='HEAD', branch='current', tag=None, custo
         'commit': commit,
         'tag': tag,
         'branch': branch,
-        'path': repo_root + '/packages/' + name,
+        'path': repo_root + '/' + name,
         'custombuild_cmd': custombuild_cmd
     }
 
@@ -197,6 +197,8 @@ vyos_packages = ['vyatta-bash',
                  'eventwatchd',
                  'live-boot',
                  'conntrack-tools']
+
+vyos_packages.append('dmvpn-vyos-nhrp')
 
 # Special packages mean packages which are located no in the VyOS namespace
 # or require fancy build instructions

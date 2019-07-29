@@ -463,7 +463,7 @@ sub create_nhrp_iptables {
 		system ("sudo iptables -N VYOS_NHRP_${tun}_OUT_HOOK") == 0 or die "System call failed: $!";
 		system ("sudo iptables -A VYOS_NHRP_${tun}_OUT_HOOK -p gre -s ${local_ip} -d 224.0.0.0/4 -j DROP") == 0 or die "System call failed: $!";
 		system ("sudo iptables -A VYOS_NHRP_${tun}_OUT_HOOK -j RETURN") == 0 or die "System call failed: $!";
-		system ("sudo iptables -I OUTPUT 2 -j VYOS_NHRP_${tun}_OUT_HOOK") == 0 or die "System call failed: $!";
+		system ("sudo iptables -I OUTPUT 1 -j VYOS_NHRP_${tun}_OUT_HOOK") == 0 or die "System call failed: $!";
 	}
 }
 
