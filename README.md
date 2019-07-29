@@ -34,7 +34,7 @@ To setup networking follow the "Connect your emulated machine to a real network"
 Run ```systemctl restart networking``` after installing bridge-utils and thing should work fine with the below command:
            
 ```
-sudo qemu-system-mips -M malta -kernel vmlinux-4.9.0-9-4kc-malta -hda hda.img -append "root=/dev/sda1 console=ttyS0 nokaslr" -initrd initrd.img-4.9.0-9-4kc-malta -nographic -m 512 -net nic -net tap              
+sudo qemu-system-mips -M malta -kernel vmlinux-4.9.0-9-4kc-malta -hda hda.img -append "root=/dev/sda1 console=ttyS0 nokaslr" -initrd initrd.img-4.9.0-9-4kc-malta -nographic -m 512 -net nic -net tap
 ```
 
 In the Qemu VM, run:
@@ -54,9 +54,9 @@ make build
 The build will likely take a very long time (hours). I'd suggest letting it run overnight. After it's done, you should have a nice zipped up edgeos-dmvpn.tar.gz that can be dropped on any MIPS EdgeOS router. The install instructions from that point are located in the zipped file as a file called TARGET-INSTALL.
 
 # Helpful commands
-Ctrl-A X			# Close Qemu from within the terminal
-ps -ef | grep open	 	# Check that the OpenNHRP process is running
-systemctl status opennhrp	# Check the status
-opennhrpctl show		# See the OpenNHRP connections
-opennhrpctl interface show	# Show relevant OpenNHRP interfaces
+Ctrl-A X			# Close Qemu from within the terminal  
+ps -ef | grep open	 	# Check that the OpenNHRP process is running  
+systemctl status opennhrp	# Check the status  
+opennhrpctl show		# See the OpenNHRP connections  
+opennhrpctl interface show	# Show relevant OpenNHRP interfaces  
 
