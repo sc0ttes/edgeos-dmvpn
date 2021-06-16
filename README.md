@@ -61,3 +61,7 @@ systemctl status opennhrp	# Check the status
 opennhrpctl show		# See the OpenNHRP connections  
 opennhrpctl interface show	# Show relevant OpenNHRP interfaces  
 ```
+
+# Additonal help and threads
+
+If you're looking for additional help or architectures, check out this thread on Ubiquiti's forum where some of us had been working on it: https://community.ui.com/questions/OpenNHRP-Kernel-Configuration/a8cd8b29-ccc5-40d5-b199-3fbf8a643363
